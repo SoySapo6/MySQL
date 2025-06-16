@@ -1,6 +1,6 @@
 FROM php:8.2-apache
 
-# Instala dependencias necesarias para Laravel
+# Instala extensiones necesarias para Laravel
 RUN apt-get update && apt-get install -y \
     git \
     unzip \
@@ -12,22 +12,27 @@ RUN apt-get update && apt-get install -y \
     libzip-dev \
     && docker-php-ext-install pdo pdo_mysql mysqli zip
 
-# Activa mod_rewrite y permite .htaccess
+# Activa mod_rewrite y .htaccess
 RUN a2enmod rewrite
 RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf
 RUN sed -i '/<Directory \/var\/www\/>/,/<\/Directory>/ s/AllowOverride None/AllowOverride All/' /etc/apache2/apache2.conf
 
-# Establece el nuevo DocumentRoot al folder /public (Laravel)
+# Cambiar DocumentRoot a /public
 RUN sed -i 's|DocumentRoot /var/www/html|DocumentRoot /var/www/html/public|g' /etc/apache2/sites-available/000-default.conf
 
-# Clona CtrlPanel.gg
+# Clona CtrlPanel.gg y da permisos
 RUN rm -rf /var/www/html/* && \
     git clone https://github.com/CtrlPanel-gg/panel.git /var/www/html && \
     chown -R www-data:www-data /var/www/html && \
     chmod -R 755 /var/www/html
 
-# Expone puerto 80
+# Instala Composer + dependencias de Laravel
+RUN curl -sS https://getcomposer.org/installer | php && \
+    mv composer.phar /usr/local/bin/composer && \
+    cd /var/www/html && \
+    composer install --no-interaction --prefer-dist --optimize-autoloader
+
+# Puerto
 EXPOSE 80
 
-# Inicia Apache en primer plano
 CMD ["apache2-foreground"]
