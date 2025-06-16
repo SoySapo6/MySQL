@@ -1,38 +1,19 @@
-# Imagen base con Apache y PHP
 FROM php:8.2-apache
 
-# Variables para MariaDB
-ENV MYSQL_ROOT_PASSWORD=maycolroot
-ENV MYSQL_DATABASE=ctrlpanel
-ENV MYSQL_USER=ctrluser
-ENV MYSQL_PASSWORD=maycolpass
-
-# Instala dependencias necesarias
+# Instala extensiones necesarias para PHP
 RUN apt-get update && apt-get install -y \
     git \
     unzip \
     libpng-dev \
     libonig-dev \
     libxml2-dev \
-    mariadb-server \
-    mariadb-client \
     && docker-php-ext-install pdo pdo_mysql mysqli
 
-# Configura MariaDB
-RUN service mysql start && \
-    mysql -e "CREATE DATABASE IF NOT EXISTS ${MYSQL_DATABASE};" && \
-    mysql -e "CREATE USER IF NOT EXISTS '${MYSQL_USER}'@'localhost' IDENTIFIED BY '${MYSQL_PASSWORD}';" && \
-    mysql -e "GRANT ALL PRIVILEGES ON ${MYSQL_DATABASE}.* TO '${MYSQL_USER}'@'localhost';" && \
-    mysql -e "FLUSH PRIVILEGES;"
+# Activa mod_rewrite para .htaccess
+RUN a2enmod rewrite
 
-# Clona CtrlPanel.gg en el directorio web
+# Clona CtrlPanel.gg
 RUN rm -rf /var/www/html/* && \
     git clone https://github.com/CtrlPanel-gg/panel.git /var/www/html && \
     chown -R www-data:www-data /var/www/html && \
     chmod -R 755 /var/www/html
-
-# Exponemos el puerto web
-EXPOSE 80
-
-# Iniciar Apache y MariaDB al arranque
-CMD service mysql start && apache2-foreground
