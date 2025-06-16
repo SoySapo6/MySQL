@@ -10,9 +10,10 @@ RUN apt-get update && apt-get install -y \
     libxml2-dev \
     libzip-dev \
     libicu-dev \
+    libssl-dev \
     && docker-php-ext-install pdo pdo_mysql mysqli zip intl
 
-# Instala la extensión de Redis
+# Instala Redis
 RUN pecl install redis && docker-php-ext-enable redis
 
 RUN a2enmod rewrite
@@ -20,15 +21,25 @@ RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf
 RUN sed -i '/<Directory \/var\/www\/>/,/<\/Directory>/ s/AllowOverride None/AllowOverride All/' /etc/apache2/apache2.conf
 RUN sed -i 's|DocumentRoot /var/www/html|DocumentRoot /var/www/html/public|g' /etc/apache2/sites-available/000-default.conf
 
+# Clona el panel
 RUN rm -rf /var/www/html/* && \
     git clone https://github.com/CtrlPanel-gg/panel.git /var/www/html && \
     chown -R www-data:www-data /var/www/html && \
     chmod -R 755 /var/www/html
 
+# Copia .env si lo tienes (ajusta según tu estructura)
+COPY .env.example /var/www/html/.env
+
+# Instala composer
 RUN curl -sS https://getcomposer.org/installer | php && \
-    mv composer.phar /usr/local/bin/composer && \
-    cd /var/www/html && \
-    composer install --no-interaction --prefer-dist --optimize-autoloader
+    mv composer.phar /usr/local/bin/composer
+
+# Ejecuta composer sin scripts (evita fallos por root)
+RUN cd /var/www/html && \
+    composer install --no-interaction --prefer-dist --optimize-autoloader --no-scripts
+
+# Genera clave de app
+RUN cd /var/www/html && php artisan key:generate && php artisan config:clear
 
 EXPOSE 80
 
